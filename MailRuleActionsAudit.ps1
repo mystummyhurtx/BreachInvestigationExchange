@@ -1,10 +1,8 @@
 # MailRuleActionsAudit.ps1
-# This script will scrape audit logs for common IOC's, it is good to run it after a breach to ensure the breach hasn't spread to other users.
-# This script is also good for auditing, as it flags common IOC's. We don't have to wait until a breach occurs to use it.
-# Prereq: fully updated PowerShell, with ExchangeOnline module installed / loaded. Must be connected via Connect-ExchangeOnline prior to running. The account you connect with needs Audit Logs or View-Only Audit Logs role.
-# Usage:  .\MailRuleActionsAudit.ps1 (checks last 180 days of audit logs, can go to 365 days if the client has the licensing for it)
-# Output: C:\Temp\MailRuleActionsAudit.csv. Check the Flag column; blank means nothing suspicious matched, but they can be worth double-checking. Date converts to local time.
-
+# Prereq: already connected via Connect-ExchangeOnline (needs Audit Logs / View-Only Audit Logs role).
+# Usage:  .\MailRuleActionsAudit.ps1            (180 days)
+#         .\MailRuleActionsAudit.ps1 -Days 365  (if your audit retention allows)
+# Output: C:\Temp\MailRuleActionsAudit.csv. Check the Flag column; blank means nothing suspicious matched.
 param([int]$Days = 180, [string]$Out = 'C:\Temp\MailRuleActionsAudit.csv')
 
 New-Item -ItemType Directory -Path (Split-Path $Out) -Force | Out-Null
@@ -47,10 +45,10 @@ for ($off = 0; $off -lt $Days; $off += 30) {          # newest 30-day window fir
 
         if ($txt -match 'MoveToFolder=[^;]*?(RSS Feeds|RSS Subscriptions|Conversation History|Archive|Notes|Sync Issues|Clutter)') { $f += "Moves to: $($Matches[1])" }
         if ($txt -match '(DeleteMessage|SoftDeleteMessage|PermanentDelete|MoveToDeletedItems)=True') { $f += 'Deletes message' }
-        if ($txt -match 'MarkAsRead=True') { $f += 'Marks as read' }
+        if ($f.Count -and $txt -match 'MarkAsRead=True') { $f += 'Marks as read' }   # only flagged alongside another flag (alone it is usually benign)
 
         $rows += [pscustomobject]@{
-            Date = $r.CreationDate.ToLocalTime()
+            CreationDate = $r.CreationDate.ToLocalTime()
             User         = $r.UserIds
             Operation    = $r.Operations
             ClientIP     = if ($d.ClientIPAddress) { $d.ClientIPAddress } else { $d.ClientIP }
