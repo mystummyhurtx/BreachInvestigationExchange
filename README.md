@@ -8,7 +8,7 @@ Attackers who compromise a mailbox commonly create hidden rules to conceal their
 
 | File | Purpose |
 |------|---------|
-| `SingleMailboxRuleCheck.ps1` one-liner (below) | Inspect a single mailbox's rules, including hidden ones. Good to run first on the first account you notice in the breach, and any subsequent ones after finding the rule. Includes another one-liner / information on removing found malicious rules.|
+| `SingleMailboxRuleCheck.ps1` one-liner (below) | Inspect a single mailbox's rules, including hidden ones. Good to run first on the first account you notice in the breach, and any subsequent ones after auditing. Includes another one-liner / information on removing found malicious rules.|
 | `MailRuleActionsAudit.ps1` | Tenant-wide audit log search. Outputs a CSV with a `Flag` column. |
 | `Run-MailRuleAudit.ps1` | Helpdesk wrapper: installs the module, signs in with a prompted admin UPN, runs the audit, disconnects. |
 | `RunAudit.bat` | Double-click launcher for the wrapper. |
