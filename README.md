@@ -47,13 +47,13 @@ Connect to Exchange Online, then run the audit on its own:
 
 ```powershell
 Connect-ExchangeOnline -Device
-.\MailRuleActionsAudit.ps1                  # last 180 days
+.\MailRuleActionsAudit.ps1                  # last 30 days by default
 .\MailRuleActionsAudit.ps1 -Days 365        # if your audit retention allows it
 ```
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `-Days` | `180` | How far back to search. Anything beyond your retention is simply not returned. |
+| `-Days` | `30` | How far back to search. Anything beyond your retention is simply not returned. |
 | `-Out` | `C:\Temp\MailRuleActionsAudit.csv` | CSV output path. |
 
 Run the sign-in check on its own (it signs in to Graph itself):
