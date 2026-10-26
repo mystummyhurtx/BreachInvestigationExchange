@@ -1,13 +1,13 @@
 # MailRuleActionsAudit.ps1
 # Prereq: already connected via Connect-ExchangeOnline (needs Audit Logs / View-Only Audit Logs role).
-# Usage:  .\MailRuleActionsAudit.ps1            (180 days)
+# Usage:  .\MailRuleActionsAudit.ps1            (30 days by default, can be edited. Or let an engineer worry about that once it is escalated.)
 #         .\MailRuleActionsAudit.ps1 -Days 365  (if your audit retention allows)
 # Output: C:\Temp\MailRuleActionsAudit.csv. Check the Flag column; blank means nothing suspicious matched.
-param([int]$Days = 180, [string]$Out = 'C:\Temp\MailRuleActionsAudit.csv')
+param([int]$Days = 30, [string]$Out = 'C:\Temp\MailRuleActionsAudit.csv')
 
 New-Item -ItemType Directory -Path (Split-Path $Out) -Force | Out-Null
 $ops      = 'New-InboxRule','Set-InboxRule','Remove-InboxRule','UpdateInboxRules','Set-Mailbox'
-$internal = (Get-AcceptedDomain).DomainName
+$internal = @((Get-AcceptedDomain).DomainName | ForEach-Object { "$_".ToLower() })   # every accepted domain, as plain lowercase strings
 $end      = Get-Date
 $rows     = @()
 
@@ -32,13 +32,19 @@ for ($off = 0; $off -lt $Days; $off += 30) {          # newest 30-day window fir
 
         $f = @(); $external = $false
 
-        if (-not $isMbx -and $name -match '^[\W_]*$|^.$') { $f += "Name is '$name'" }
+        # Outlook placeholder stub (e.g. a rule named "|" left by an interrupted sync): its only action is a client-side DeferAction, so it does nothing
+        $acts = [regex]::Match($txt, 'RuleActions=(\[[^\]]*\])').Groups[1].Value
+        $stub = $acts -and ($acts -notmatch '"ActionType"\s*:\s*"(?!DeferAction)')
+
+        # Blank names can't be created, so only punctuation-only or single-character names are flagged. Blank names are manual rule runs in classic outlook.
+        if (-not $isMbx -and -not $stub -and $name -match '\S' -and $name -match '^[\W_]+$|^.$') { $f += "Name is '$name'" }
 
         foreach ($m in [regex]::Matches($txt, '(ForwardTo|ForwardAsAttachmentTo|RedirectTo|ForwardingSmtpAddress|ForwardingAddress)=([^;]+)')) {
-            $dom = [regex]::Match($m.Groups[2].Value, '@([\w.-]+)').Groups[1].Value
-            $ext = $dom -and ($internal -notcontains $dom)
-            if ($ext) { $external = $true }
-            $f += "Forwards to: $($m.Groups[2].Value.Trim())" + $(if ($ext) { ' (EXTERNAL)' })
+            $dom = [regex]::Match($m.Groups[2].Value, '@([\w.-]+)').Groups[1].Value.ToLower()
+            if ($dom -and ($internal -notcontains $dom)) {     # only forwards to addresses outside the tenant's accepted domains
+                $external = $true
+                $f += "Forwards to: $($m.Groups[2].Value.Trim()) (EXTERNAL)"
+            }
         }
 
         if ($isMbx -and -not $external) { continue }   # Set-Mailbox only matters for external forwarding
