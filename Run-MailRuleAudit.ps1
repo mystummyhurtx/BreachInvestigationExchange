@@ -54,7 +54,10 @@ try { Disconnect-ExchangeOnline -Confirm:$false } catch {}
 $csv = 'C:\Temp\MailRuleActionsAudit.csv'
 if ((Test-Path $csv) -and @(Import-Csv $csv | Where-Object Flag).Count -gt 0) {
     Write-Host "`nFlagged rule events found. Checking their IPs against Entra sign-in logs (second sign-in required)..." -ForegroundColor Cyan
-    & pwsh -NoProfile -ExecutionPolicy Bypass -File "$PSScriptRoot\SignInIpCheck.ps1"
+    $trusted = Read-TrustedIps      # expected IPs (e.g. the office) are skipped: they are noisy and every user signs in from them
+    $childArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "$PSScriptRoot\SignInIpCheck.ps1")
+    if ($trusted) { $childArgs += '-ExcludeIp', ($trusted -join ',') }
+    & pwsh @childArgs
 } else {
     Write-Host 'No flagged rule events, skipping the sign-in check.'
 }
