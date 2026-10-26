@@ -44,3 +44,19 @@ function Invoke-PrivateSignIn([scriptblock]$Connect) {
         }
     }
 }
+
+# Asks for expected public IPs (office, VPN, ...) that the sign-in check should skip. Returns an array (empty if none).
+function Read-TrustedIps {
+    $ips = @(); $label = "the office's public IP"
+    while ($true) {
+        $ip = (Read-Host "What is $label? (press Enter to skip)").Trim()
+        if (-not $ip) { break }
+        $valid = [ipaddress]::TryParse($ip, [ref]$null) -and ($ip -match '^\d{1,3}(\.\d{1,3}){3}$' -or $ip.Contains(':'))
+        if (-not $valid) { Write-Warning 'That is not a valid IP address (enter it without a port).'; continue }
+        if ((Read-Host "Confirm $ip is correct (Y/N)") -notmatch '^[Yy]') { continue }
+        $ips += $ip
+        if ((Read-Host 'Any other expected public IPs (Y/N)') -notmatch '^[Yy]') { break }
+        $label = 'the next expected public IP'
+    }
+    $ips
+}
